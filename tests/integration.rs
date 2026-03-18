@@ -161,14 +161,14 @@ fn waybar_class_waiting_takes_priority() {
 }
 
 #[test]
-fn waybar_class_active_over_idle() {
+fn waybar_class_idle_over_active() {
     let home = TempDir::new().unwrap();
     send_event(home.path(), "sess-1", "SessionStart");
     send_event(home.path(), "sess-1", "UserPromptSubmit");
     send_event(home.path(), "sess-2", "SessionStart");
 
     let out = waybar_output(home.path());
-    assert_eq!(out["class"], "claude-active");
+    assert_eq!(out["class"], "claude-idle");
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn waybar_tooltip_keeps_short_ids() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    assert!(tooltip.contains("short: Idle"));
+    assert!(tooltip.contains("■ short  —  Idle"));
 }
 
 #[test]
@@ -297,7 +297,10 @@ fn tooltip_shows_custom_title_from_jsonl() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    assert!(tooltip.contains("my-label: Idle"), "tooltip was: {tooltip}");
+    assert!(
+        tooltip.contains("■ my-label  —  Idle"),
+        "tooltip was: {tooltip}"
+    );
 }
 
 #[test]
@@ -313,7 +316,7 @@ fn tooltip_uses_cwd_last_component_when_no_title() {
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
     assert!(
-        tooltip.contains("myproject: Idle"),
+        tooltip.contains("■ myproject  —  Idle"),
         "tooltip was: {tooltip}"
     );
 }
@@ -325,7 +328,10 @@ fn tooltip_falls_back_to_id_when_no_name_or_cwd() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    assert!(tooltip.contains("abcdefgh: Idle"), "tooltip was: {tooltip}");
+    assert!(
+        tooltip.contains("■ abcdefgh  —  Idle"),
+        "tooltip was: {tooltip}"
+    );
     assert!(
         !tooltip.contains("abcdefghij"),
         "should truncate at 8 chars"

@@ -79,7 +79,7 @@ fn waybar() -> anyhow::Result<()> {
     store.save()?;
 
     let count = store.sessions.len();
-    let tooltip: String = store
+    let mut tooltip_lines: Vec<String> = store
         .sessions
         .iter()
         .map(|(id, s)| {
@@ -87,10 +87,11 @@ fn waybar() -> anyhow::Result<()> {
                 .name
                 .as_deref()
                 .unwrap_or_else(|| if id.len() > 8 { &id[..8] } else { id });
-            format!("{}: {}", label, s.state)
+            format!("{} {}  —  {}", s.state.icon(), label, s.state)
         })
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect();
+    tooltip_lines.sort();
+    let tooltip = tooltip_lines.join("\n");
 
     let class = if store
         .sessions
@@ -98,10 +99,11 @@ fn waybar() -> anyhow::Result<()> {
         .any(|s| s.state == SessionState::WaitingForInput)
     {
         "claude-waiting"
-    } else if store
-        .sessions
-        .values()
-        .any(|s| s.state == SessionState::Active)
+    } else if !store.sessions.is_empty()
+        && store
+            .sessions
+            .values()
+            .all(|s| s.state == SessionState::Active)
     {
         "claude-active"
     } else {

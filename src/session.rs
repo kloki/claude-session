@@ -11,6 +11,16 @@ pub enum SessionState {
     WaitingForInput,
 }
 
+impl SessionState {
+    pub fn icon(&self) -> &'static str {
+        match self {
+            SessionState::Active => "▶",
+            SessionState::Idle => "■",
+            SessionState::WaitingForInput => "⏸",
+        }
+    }
+}
+
 impl std::fmt::Display for SessionState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
