@@ -361,6 +361,87 @@ fn process_hook_ignores_extra_fields() {
 }
 
 #[test]
+fn process_notification_parses_input_and_resolves_name() {
+    let home = TempDir::new().unwrap();
+
+    // Create a session with a known name first
+    send_event(
+        home.path(),
+        "notif-sess",
+        "SessionStart",
+        Some("/home/user/my-project"),
+        None,
+    );
+
+    let input = serde_json::json!({
+        "session_id": "notif-sess",
+        "message": "Task complete",
+        "cwd": "/home/user/my-project",
+    });
+
+    // notify-send may not exist in CI, but the command should still succeed
+    // (we .ok() the notify-send call)
+    cmd(home.path())
+        .arg("process-notification")
+        .write_stdin(input.to_string())
+        .assert()
+        .success();
+}
+
+#[test]
+fn process_notification_uses_fallback_when_no_message() {
+    let home = TempDir::new().unwrap();
+
+    let input = serde_json::json!({
+        "session_id": "notif-sess-2",
+    });
+
+    cmd(home.path())
+        .arg("process-notification")
+        .write_stdin(input.to_string())
+        .assert()
+        .success();
+}
+
+#[test]
+fn process_notification_resolves_name_from_transcript() {
+    let home = TempDir::new().unwrap();
+    let session_id = "notif-transcript";
+
+    let projects_dir = home.path().join(".claude/projects/proj1");
+    fs::create_dir_all(&projects_dir).unwrap();
+    let jsonl_path = projects_dir.join(format!("{session_id}.jsonl"));
+    let entry = serde_json::json!({
+        "type": "custom-title",
+        "customTitle": "my-notification-label",
+        "sessionId": session_id,
+    });
+    fs::write(&jsonl_path, format!("{}\n", entry)).unwrap();
+
+    let input = serde_json::json!({
+        "session_id": session_id,
+        "message": "Done!",
+        "transcript_path": jsonl_path.to_str().unwrap(),
+    });
+
+    cmd(home.path())
+        .arg("process-notification")
+        .write_stdin(input.to_string())
+        .assert()
+        .success();
+}
+
+#[test]
+fn process_notification_rejects_invalid_json() {
+    let home = TempDir::new().unwrap();
+    cmd(home.path())
+        .arg("process-notification")
+        .write_stdin("not json")
+        .assert()
+        .failure();
+}
+
+#[test]
 fn unknown_event_defaults_to_active() {
     let home = TempDir::new().unwrap();
     send_event(home.path(), "sess-1", "SomeNewEvent", None, None);

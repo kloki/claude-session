@@ -41,7 +41,11 @@ Add to your Claude Code `settings.json`:
     "Notification": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-hook" }
+          { "type": "command", "command": "claude-sessions process-hook" },
+          {
+            "type": "command",
+            "command": "claude-sessions process-notification"
+          }
         ]
       }
     ],
@@ -72,12 +76,14 @@ Add to your Claude Code `settings.json`:
 
 ## Commands
 
-| Command        | Description                                      |
-| -------------- | ------------------------------------------------ |
-| `process-hook` | Process a hook event from Claude (reads stdin)   |
-| `ps`           | List active sessions in terminal-friendly format |
-| `waybar`       | Output Waybar-compatible JSON                    |
-| `clear`        | Clear all session state                          |
+| Command                | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| `process-hook`         | Process a hook event from Claude (reads stdin)           |
+| `process-notification` | Send a desktop notification via `notify-send` for a hook |
+| `ps`                   | List active sessions in terminal-friendly format         |
+| `waybar`               | Output Waybar-compatible JSON                            |
+| `json`                 | Output sessions as a JSON array                          |
+| `clear`                | Clear all session state                                  |
 
 ## Waybar
 

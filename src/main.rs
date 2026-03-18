@@ -17,6 +17,8 @@ struct Cli {
 enum Command {
     /// Process a hook event from Claude hooks (reads JSON from stdin)
     ProcessHook,
+    /// Process a notification hook and send a desktop notification via notify-send
+    ProcessNotification,
     /// Clear all session state
     Clear,
     /// Output Waybar-compatible JSON
@@ -33,6 +35,49 @@ struct HookInput {
     hook_event_name: String,
     cwd: Option<String>,
     transcript_path: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct NotificationInput {
+    session_id: String,
+    message: Option<String>,
+    cwd: Option<String>,
+    transcript_path: Option<String>,
+}
+
+fn process_notification() -> anyhow::Result<()> {
+    let mut input = String::new();
+    std::io::stdin().read_to_string(&mut input)?;
+    let notif: NotificationInput = serde_json::from_str(&input)?;
+
+    let store = SessionStore::load()?;
+    let session_name = store
+        .sessions
+        .get(&notif.session_id)
+        .and_then(|s| s.name.clone())
+        .or_else(|| notif.transcript_path.as_deref().and_then(read_custom_title))
+        .or_else(|| {
+            notif.cwd.as_deref().and_then(|cwd| {
+                std::path::Path::new(cwd)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(str::to_string)
+            })
+        })
+        .unwrap_or_else(|| notif.session_id[..notif.session_id.len().min(8)].to_string());
+
+    let title = format!("Claude: {session_name}");
+    let body = notif
+        .message
+        .unwrap_or_else(|| "Needs attention".to_string());
+
+    std::process::Command::new("notify-send")
+        .arg(&title)
+        .arg(&body)
+        .status()
+        .ok();
+
+    Ok(())
 }
 
 fn process_hook() -> anyhow::Result<()> {
@@ -164,6 +209,7 @@ fn main() {
     let cli = Cli::parse();
     let result = match cli.command {
         Command::ProcessHook => process_hook(),
+        Command::ProcessNotification => process_notification(),
         Command::Clear => SessionStore::clear(),
         Command::Waybar => waybar(),
         Command::Ps => ps(),
