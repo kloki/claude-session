@@ -119,7 +119,6 @@ pub fn read_custom_title(transcript_path: &str) -> Option<String> {
     content
         .lines()
         .filter_map(|l| serde_json::from_str::<Value>(l).ok())
-        .filter(|v| v["type"] == "custom-title")
-        .next_back()
+        .rfind(|v| v["type"] == "custom-title")
         .and_then(|v| v["customTitle"].as_str().map(str::to_string))
 }
