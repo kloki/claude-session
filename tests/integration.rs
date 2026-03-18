@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use assert_cmd::Command;
 use serde_json::Value;
@@ -10,10 +10,23 @@ fn cmd(home: &std::path::Path) -> Command {
     cmd
 }
 
-fn send_event(home: &std::path::Path, session_id: &str, event: &str) {
+fn send_event(home: &Path, session_id: &str, event: &str) {
     let input = serde_json::json!({
         "session_id": session_id,
         "hook_event_name": event,
+    });
+    cmd(home)
+        .arg("process-webhook")
+        .write_stdin(input.to_string())
+        .assert()
+        .success();
+}
+
+fn send_event_with_cwd(home: &Path, session_id: &str, event: &str, cwd: &str) {
+    let input = serde_json::json!({
+        "session_id": session_id,
+        "hook_event_name": event,
+        "cwd": cwd,
     });
     cmd(home)
         .arg("process-webhook")
@@ -186,7 +199,7 @@ fn waybar_tooltip_keeps_short_ids() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    assert!(tooltip.contains("short: Active"));
+    assert!(tooltip.contains("short: Thinking"));
 }
 
 #[test]
@@ -254,6 +267,66 @@ fn process_webhook_rejects_missing_fields() {
         .write_stdin(r#"{"session_id":"x"}"#)
         .assert()
         .failure();
+}
+
+#[test]
+fn tooltip_shows_custom_title_from_jsonl() {
+    let home = TempDir::new().unwrap();
+    let session_id = "test-session-rename";
+
+    let projects_dir = home.path().join(".claude/projects/proj1");
+    fs::create_dir_all(&projects_dir).unwrap();
+    let jsonl_path = projects_dir.join(format!("{session_id}.jsonl"));
+    let entry = serde_json::json!({
+        "type": "custom-title",
+        "customTitle": "my-label",
+        "sessionId": session_id,
+    });
+    fs::write(&jsonl_path, format!("{}\n", entry)).unwrap();
+
+    send_event(home.path(), session_id, "SessionStart");
+
+    let out = waybar_output(home.path());
+    let tooltip = out["tooltip"].as_str().unwrap();
+    assert!(
+        tooltip.contains("my-label: Thinking"),
+        "tooltip was: {tooltip}"
+    );
+}
+
+#[test]
+fn tooltip_uses_cwd_last_component_when_no_title() {
+    let home = TempDir::new().unwrap();
+    send_event_with_cwd(
+        home.path(),
+        "cwd-sess",
+        "SessionStart",
+        "/home/koen/repos/myproject",
+    );
+
+    let out = waybar_output(home.path());
+    let tooltip = out["tooltip"].as_str().unwrap();
+    assert!(
+        tooltip.contains("myproject: Thinking"),
+        "tooltip was: {tooltip}"
+    );
+}
+
+#[test]
+fn tooltip_falls_back_to_id_when_no_name_or_cwd() {
+    let home = TempDir::new().unwrap();
+    send_event(home.path(), "abcdefghijklmn", "SessionStart");
+
+    let out = waybar_output(home.path());
+    let tooltip = out["tooltip"].as_str().unwrap();
+    assert!(
+        tooltip.contains("abcdefgh: Thinking"),
+        "tooltip was: {tooltip}"
+    );
+    assert!(
+        !tooltip.contains("abcdefghij"),
+        "should truncate at 8 chars"
+    );
 }
 
 #[test]

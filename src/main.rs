@@ -4,7 +4,7 @@ use std::io::Read;
 
 use clap::{Parser, Subcommand};
 use serde::Deserialize;
-use session::{SessionState, SessionStore};
+use session::{SessionState, SessionStore, read_custom_title};
 
 #[derive(Parser)]
 #[command(name = "claude-sessions", about = "Track Claude Code sessions")]
@@ -27,6 +27,7 @@ enum Command {
 struct HookInput {
     session_id: String,
     hook_event_name: String,
+    cwd: Option<String>,
 }
 
 fn process_webhook() -> anyhow::Result<()> {
@@ -47,6 +48,16 @@ fn process_webhook() -> anyhow::Result<()> {
             "Notification" => SessionState::WaitingForInput,
             _ => SessionState::Active,
         };
+        if let Some(title) = read_custom_title(&hook.session_id) {
+            session.name = Some(title);
+        } else if session.name.is_none() {
+            if let Some(ref cwd) = hook.cwd {
+                session.name = std::path::Path::new(cwd)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(str::to_string);
+            }
+        }
     }
 
     store.save()?;
@@ -70,8 +81,11 @@ fn waybar() -> anyhow::Result<()> {
         .sessions
         .iter()
         .map(|(id, s)| {
-            let short_id = if id.len() > 8 { &id[..8] } else { id };
-            format!("{}: {}", short_id, s.state)
+            let label =
+                s.name
+                    .as_deref()
+                    .unwrap_or_else(|| if id.len() > 8 { &id[..8] } else { id });
+            format!("{}: {}", label, s.state)
         })
         .collect::<Vec<_>>()
         .join("\n");

@@ -1,7 +1,8 @@
-use std::{collections::HashMap, fs, io, path::PathBuf};
+use std::{collections::HashMap, env, fs, io, path::PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum SessionState {
@@ -13,9 +14,9 @@ pub enum SessionState {
 impl std::fmt::Display for SessionState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SessionState::Active => write!(f, "Active"),
+            SessionState::Active => write!(f, "Thinking"),
             SessionState::Idle => write!(f, "Idle"),
-            SessionState::WaitingForInput => write!(f, "WaitingForInput"),
+            SessionState::WaitingForInput => write!(f, "Waiting For Input"),
         }
     }
 }
@@ -23,6 +24,7 @@ impl std::fmt::Display for SessionState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
     pub state: SessionState,
+    pub name: Option<String>,
     pub started_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -71,6 +73,7 @@ impl SessionStore {
             .entry(session_id.to_string())
             .or_insert(Session {
                 state: SessionState::Active,
+                name: None,
                 started_at: now,
                 updated_at: now,
             })
@@ -81,4 +84,25 @@ impl SessionStore {
         let cutoff = Utc::now() - chrono::Duration::hours(24);
         self.sessions.retain(|_, s| s.updated_at > cutoff);
     }
+}
+
+pub fn read_custom_title(session_id: &str) -> Option<String> {
+    let projects_dir = PathBuf::from(env::var("HOME").ok()?).join(".claude/projects");
+    for entry in fs::read_dir(projects_dir).ok()?.flatten() {
+        let path = entry.path().join(format!("{session_id}.jsonl"));
+        if !path.exists() {
+            continue;
+        }
+        let content = fs::read_to_string(path).ok()?;
+        let title = content
+            .lines()
+            .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+            .filter(|v| v["type"] == "custom-title")
+            .last()
+            .and_then(|v| v["customTitle"].as_str().map(str::to_string));
+        if title.is_some() {
+            return title;
+        }
+    }
+    None
 }
