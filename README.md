@@ -20,49 +20,49 @@ Add to your Claude Code `settings.json`:
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-webhook" }
+          { "type": "command", "command": "claude-sessions process-hook" }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-webhook" }
+          { "type": "command", "command": "claude-sessions process-hook" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-webhook" }
+          { "type": "command", "command": "claude-sessions process-hook" }
         ]
       }
     ],
     "Notification": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-webhook" }
+          { "type": "command", "command": "claude-sessions process-hook" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-webhook" }
+          { "type": "command", "command": "claude-sessions process-hook" }
         ]
       }
     ],
     "PermissionRequest": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-webhook" }
+          { "type": "command", "command": "claude-sessions process-hook" }
         ]
       }
     ],
     "PreToolUse": [
       {
         "hooks": [
-          { "type": "command", "command": "claude-sessions process-webhook" }
+          { "type": "command", "command": "claude-sessions process-hook" }
         ]
       }
     ]
@@ -72,12 +72,12 @@ Add to your Claude Code `settings.json`:
 
 ## Commands
 
-| Command           | Description                                      |
-| ----------------- | ------------------------------------------------ |
-| `process-webhook` | Process a hook event from Claude (reads stdin)   |
-| `ps`              | List active sessions in terminal-friendly format |
-| `waybar`          | Output Waybar-compatible JSON                    |
-| `clear`           | Clear all session state                          |
+| Command        | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `process-hook` | Process a hook event from Claude (reads stdin)   |
+| `ps`           | List active sessions in terminal-friendly format |
+| `waybar`       | Output Waybar-compatible JSON                    |
+| `clear`        | Clear all session state                          |
 
 ## Waybar
 

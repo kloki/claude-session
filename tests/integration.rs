@@ -28,7 +28,7 @@ fn send_event(
         input["transcript_path"] = serde_json::Value::String(tp.to_string());
     }
     cmd(home)
-        .arg("process-webhook")
+        .arg("process-hook")
         .write_stdin(input.to_string())
         .assert()
         .success();
@@ -255,20 +255,20 @@ fn multiple_sessions_full_lifecycle() {
 }
 
 #[test]
-fn process_webhook_rejects_invalid_json() {
+fn process_hook_rejects_invalid_json() {
     let home = TempDir::new().unwrap();
     cmd(home.path())
-        .arg("process-webhook")
+        .arg("process-hook")
         .write_stdin("not json")
         .assert()
         .failure();
 }
 
 #[test]
-fn process_webhook_rejects_missing_fields() {
+fn process_hook_rejects_missing_fields() {
     let home = TempDir::new().unwrap();
     cmd(home.path())
-        .arg("process-webhook")
+        .arg("process-hook")
         .write_stdin(r#"{"session_id":"x"}"#)
         .assert()
         .failure();
@@ -342,7 +342,7 @@ fn tooltip_falls_back_to_id_when_no_name_or_cwd() {
 }
 
 #[test]
-fn process_webhook_ignores_extra_fields() {
+fn process_hook_ignores_extra_fields() {
     let home = TempDir::new().unwrap();
     let input = serde_json::json!({
         "session_id": "sess-1",
@@ -351,7 +351,7 @@ fn process_webhook_ignores_extra_fields() {
         "extra_field": 42,
     });
     cmd(home.path())
-        .arg("process-webhook")
+        .arg("process-hook")
         .write_stdin(input.to_string())
         .assert()
         .success();
