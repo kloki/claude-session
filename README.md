@@ -51,6 +51,20 @@ Add to your Claude Code `settings.json`:
           { "type": "command", "command": "claude-sessions process-webhook" }
         ]
       }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          { "type": "command", "command": "claude-sessions process-webhook" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "claude-sessions process-webhook" }
+        ]
+      }
     ]
   }
 }
