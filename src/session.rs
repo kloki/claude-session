@@ -49,7 +49,25 @@ fn state_file_path() -> PathBuf {
     PathBuf::from(home).join(".claude_sessions")
 }
 
+impl Session {
+    pub fn display_name<'a>(&'a self, id: &'a str) -> &'a str {
+        self.name
+            .as_deref()
+            .unwrap_or_else(|| if id.len() > 8 { &id[..8] } else { id })
+    }
+}
+
 impl SessionStore {
+    pub fn sorted_sessions(&self) -> Vec<(&str, &Session)> {
+        let mut v: Vec<(&str, &Session)> = self
+            .sessions
+            .iter()
+            .map(|(id, s)| (id.as_str(), s))
+            .collect();
+        v.sort_by_key(|(id, s)| s.display_name(id));
+        v
+    }
+
     pub fn load() -> io::Result<Self> {
         let path = state_file_path();
         if !path.exists() {

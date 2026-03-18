@@ -47,8 +47,7 @@ fn process_webhook() -> anyhow::Result<()> {
         session.updated_at = chrono::Utc::now();
         session.state = match hook.hook_event_name.as_str() {
             "UserPromptSubmit" | "PreToolUse" => SessionState::Active,
-            "SessionStart" => SessionState::Idle,
-            "Stop" => SessionState::Idle,
+            "SessionStart" | "Stop" => SessionState::Idle,
             "Notification" | "PermissionRequest" => SessionState::WaitingForInput,
             _ => SessionState::Active,
         };
@@ -81,21 +80,10 @@ fn waybar() -> anyhow::Result<()> {
     store.save()?;
 
     let count = store.sessions.len();
-    let mut entries: Vec<(&str, String)> = store
-        .sessions
+    let tooltip = store
+        .sorted_sessions()
         .iter()
-        .map(|(id, s)| {
-            let label = s
-                .name
-                .as_deref()
-                .unwrap_or_else(|| if id.len() > 8 { &id[..8] } else { id });
-            (label, format!("{}: {}", s.state.label(), label))
-        })
-        .collect();
-    entries.sort_by_key(|(name, _)| *name);
-    let tooltip = entries
-        .into_iter()
-        .map(|(_, line)| line)
+        .map(|(id, s)| format!("{}: {}", s.state.label(), s.display_name(id)))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -136,20 +124,8 @@ fn ps() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let mut entries: Vec<(&str, String)> = store
-        .sessions
-        .iter()
-        .map(|(id, s)| {
-            let label = s
-                .name
-                .as_deref()
-                .unwrap_or_else(|| if id.len() > 8 { &id[..8] } else { id });
-            (label, format!("{} {}", s.state.label(), label))
-        })
-        .collect();
-    entries.sort_by_key(|(name, _)| *name);
-    for (_, line) in entries {
-        println!("{}", line);
+    for (id, s) in store.sorted_sessions() {
+        println!("{} {}", s.state.label(), s.display_name(id));
     }
 
     Ok(())
