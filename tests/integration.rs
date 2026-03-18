@@ -135,7 +135,7 @@ fn waybar_empty_store() {
     let out = waybar_output(home.path());
     assert_eq!(out["text"], "0");
     assert_eq!(out["tooltip"], "");
-    assert_eq!(out["class"], "claude-idle");
+    assert_eq!(out["class"], "claude-empty");
 }
 
 #[test]

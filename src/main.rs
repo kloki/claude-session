@@ -93,15 +93,16 @@ fn waybar() -> anyhow::Result<()> {
         .any(|s| s.state == SessionState::WaitingForInput)
     {
         "claude-waiting"
-    } else if !store.sessions.is_empty()
-        && store
-            .sessions
-            .values()
-            .all(|s| s.state == SessionState::Active)
+    } else if store
+        .sessions
+        .values()
+        .any(|s| s.state == SessionState::Idle)
     {
+        "claude-idle"
+    } else if !store.sessions.is_empty() {
         "claude-active"
     } else {
-        "claude-idle"
+        "claude-empty"
     };
 
     let output = WaybarOutput {
