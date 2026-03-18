@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs, io, path::PathBuf};
+use std::{collections::HashMap, fs, io, path::PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -86,23 +86,12 @@ impl SessionStore {
     }
 }
 
-pub fn read_custom_title(session_id: &str) -> Option<String> {
-    let projects_dir = PathBuf::from(env::var("HOME").ok()?).join(".claude/projects");
-    for entry in fs::read_dir(projects_dir).ok()?.flatten() {
-        let path = entry.path().join(format!("{session_id}.jsonl"));
-        if !path.exists() {
-            continue;
-        }
-        let content = fs::read_to_string(path).ok()?;
-        let title = content
-            .lines()
-            .filter_map(|l| serde_json::from_str::<Value>(l).ok())
-            .filter(|v| v["type"] == "custom-title")
-            .last()
-            .and_then(|v| v["customTitle"].as_str().map(str::to_string));
-        if title.is_some() {
-            return title;
-        }
-    }
-    None
+pub fn read_custom_title(transcript_path: &str) -> Option<String> {
+    let content = fs::read_to_string(transcript_path).ok()?;
+    content
+        .lines()
+        .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+        .filter(|v| v["type"] == "custom-title")
+        .last()
+        .and_then(|v| v["customTitle"].as_str().map(str::to_string))
 }

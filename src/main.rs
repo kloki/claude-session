@@ -28,6 +28,7 @@ struct HookInput {
     session_id: String,
     hook_event_name: String,
     cwd: Option<String>,
+    transcript_path: Option<String>,
 }
 
 fn process_webhook() -> anyhow::Result<()> {
@@ -43,12 +44,12 @@ fn process_webhook() -> anyhow::Result<()> {
         let session = store.upsert(&hook.session_id);
         session.updated_at = chrono::Utc::now();
         session.state = match hook.hook_event_name.as_str() {
-            "SessionStart" | "UserPromptSubmit" => SessionState::Active,
+            "SessionStart" | "UserPromptSubmit" | "PreToolUse" => SessionState::Active,
             "Stop" => SessionState::Idle,
-            "Notification" => SessionState::WaitingForInput,
+            "Notification" | "PermissionRequest" => SessionState::WaitingForInput,
             _ => SessionState::Active,
         };
-        if let Some(title) = read_custom_title(&hook.session_id) {
+        if let Some(title) = hook.transcript_path.as_deref().and_then(read_custom_title) {
             session.name = Some(title);
         } else if session.name.is_none() {
             if let Some(ref cwd) = hook.cwd {
@@ -81,10 +82,10 @@ fn waybar() -> anyhow::Result<()> {
         .sessions
         .iter()
         .map(|(id, s)| {
-            let label =
-                s.name
-                    .as_deref()
-                    .unwrap_or_else(|| if id.len() > 8 { &id[..8] } else { id });
+            let label = s
+                .name
+                .as_deref()
+                .unwrap_or_else(|| if id.len() > 8 { &id[..8] } else { id });
             format!("{}: {}", label, s.state)
         })
         .collect::<Vec<_>>()

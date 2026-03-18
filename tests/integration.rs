@@ -284,7 +284,16 @@ fn tooltip_shows_custom_title_from_jsonl() {
     });
     fs::write(&jsonl_path, format!("{}\n", entry)).unwrap();
 
-    send_event(home.path(), session_id, "SessionStart");
+    let input = serde_json::json!({
+        "session_id": session_id,
+        "hook_event_name": "SessionStart",
+        "transcript_path": jsonl_path.to_str().unwrap(),
+    });
+    cmd(home.path())
+        .arg("process-webhook")
+        .write_stdin(input.to_string())
+        .assert()
+        .success();
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
@@ -352,6 +361,27 @@ fn process_webhook_ignores_extra_fields() {
 fn unknown_event_defaults_to_active() {
     let home = TempDir::new().unwrap();
     send_event(home.path(), "sess-1", "SomeNewEvent");
+
+    let store = read_store(home.path());
+    assert_eq!(store["sessions"]["sess-1"]["state"], "Active");
+}
+
+#[test]
+fn permission_request_marks_waiting_for_input() {
+    let home = TempDir::new().unwrap();
+    send_event(home.path(), "sess-1", "SessionStart");
+    send_event(home.path(), "sess-1", "PermissionRequest");
+
+    let store = read_store(home.path());
+    assert_eq!(store["sessions"]["sess-1"]["state"], "WaitingForInput");
+}
+
+#[test]
+fn pre_tool_use_restores_active_after_permission() {
+    let home = TempDir::new().unwrap();
+    send_event(home.path(), "sess-1", "SessionStart");
+    send_event(home.path(), "sess-1", "PermissionRequest");
+    send_event(home.path(), "sess-1", "PreToolUse");
 
     let store = read_store(home.path());
     assert_eq!(store["sessions"]["sess-1"]["state"], "Active");
