@@ -44,7 +44,8 @@ fn process_webhook() -> anyhow::Result<()> {
         let session = store.upsert(&hook.session_id);
         session.updated_at = chrono::Utc::now();
         session.state = match hook.hook_event_name.as_str() {
-            "SessionStart" | "UserPromptSubmit" | "PreToolUse" => SessionState::Active,
+            "UserPromptSubmit" | "PreToolUse" => SessionState::Active,
+            "SessionStart" => SessionState::Idle,
             "Stop" => SessionState::Idle,
             "Notification" | "PermissionRequest" => SessionState::WaitingForInput,
             _ => SessionState::Active,

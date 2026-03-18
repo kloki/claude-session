@@ -53,12 +53,12 @@ fn waybar_output(home: &std::path::Path) -> Value {
 }
 
 #[test]
-fn session_start_creates_active_session() {
+fn session_start_creates_idle_session() {
     let home = TempDir::new().unwrap();
     send_event(home.path(), "sess-1", "SessionStart");
 
     let store = read_store(home.path());
-    assert_eq!(store["sessions"]["sess-1"]["state"], "Active");
+    assert_eq!(store["sessions"]["sess-1"]["state"], "Idle");
 }
 
 #[test]
@@ -164,8 +164,8 @@ fn waybar_class_waiting_takes_priority() {
 fn waybar_class_active_over_idle() {
     let home = TempDir::new().unwrap();
     send_event(home.path(), "sess-1", "SessionStart");
+    send_event(home.path(), "sess-1", "UserPromptSubmit");
     send_event(home.path(), "sess-2", "SessionStart");
-    send_event(home.path(), "sess-2", "Stop");
 
     let out = waybar_output(home.path());
     assert_eq!(out["class"], "claude-active");
@@ -199,7 +199,7 @@ fn waybar_tooltip_keeps_short_ids() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    assert!(tooltip.contains("short: Thinking"));
+    assert!(tooltip.contains("short: Idle"));
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn multiple_sessions_full_lifecycle() {
     let store = read_store(home.path());
     assert_eq!(store["sessions"]["s1"]["state"], "WaitingForInput");
     assert_eq!(store["sessions"]["s2"]["state"], "Idle");
-    assert_eq!(store["sessions"]["s3"]["state"], "Active");
+    assert_eq!(store["sessions"]["s3"]["state"], "Idle");
 
     send_event(home.path(), "s1", "UserPromptSubmit");
     send_event(home.path(), "s2", "SessionEnd");
@@ -297,10 +297,7 @@ fn tooltip_shows_custom_title_from_jsonl() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    assert!(
-        tooltip.contains("my-label: Thinking"),
-        "tooltip was: {tooltip}"
-    );
+    assert!(tooltip.contains("my-label: Idle"), "tooltip was: {tooltip}");
 }
 
 #[test]
@@ -316,7 +313,7 @@ fn tooltip_uses_cwd_last_component_when_no_title() {
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
     assert!(
-        tooltip.contains("myproject: Thinking"),
+        tooltip.contains("myproject: Idle"),
         "tooltip was: {tooltip}"
     );
 }
@@ -328,10 +325,7 @@ fn tooltip_falls_back_to_id_when_no_name_or_cwd() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    assert!(
-        tooltip.contains("abcdefgh: Thinking"),
-        "tooltip was: {tooltip}"
-    );
+    assert!(tooltip.contains("abcdefgh: Idle"), "tooltip was: {tooltip}");
     assert!(
         !tooltip.contains("abcdefghij"),
         "should truncate at 8 chars"
@@ -354,7 +348,7 @@ fn process_webhook_ignores_extra_fields() {
         .success();
 
     let store = read_store(home.path());
-    assert_eq!(store["sessions"]["sess-1"]["state"], "Active");
+    assert_eq!(store["sessions"]["sess-1"]["state"], "Idle");
 }
 
 #[test]

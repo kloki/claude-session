@@ -72,7 +72,7 @@ impl SessionStore {
         self.sessions
             .entry(session_id.to_string())
             .or_insert(Session {
-                state: SessionState::Active,
+                state: SessionState::Idle,
                 name: None,
                 started_at: now,
                 updated_at: now,
