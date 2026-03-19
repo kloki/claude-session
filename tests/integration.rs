@@ -133,7 +133,10 @@ fn waybar_empty_store() {
     let home = TempDir::new().unwrap();
     let out = waybar_output(home.path());
     assert_eq!(out["text"], "0");
-    assert_eq!(out["tooltip"], "No active sessions");
+    assert_eq!(
+        out["tooltip"],
+        "<span font_family='monospace' font_size='small'>No active sessions</span>"
+    );
     assert_eq!(out["class"], "claude-empty");
 }
 
@@ -193,11 +196,11 @@ fn waybar_tooltip_truncates_long_ids() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    // Name column truncates to 8 chars, but full ID is shown in ID column
+    // Waybar tooltip doesn't show ID column; name column truncates to 8 chars
     assert!(tooltip.contains("abcdefgh"), "tooltip was: {tooltip}");
     assert!(
-        tooltip.contains("abcdefghij-long-id"),
-        "full ID should appear in ID column: {tooltip}"
+        !tooltip.contains("abcdefghij-long-id"),
+        "full ID should not appear in waybar tooltip (no ID column): {tooltip}"
     );
 }
 
@@ -329,12 +332,11 @@ fn tooltip_falls_back_to_id_when_no_name_or_cwd() {
 
     let out = waybar_output(home.path());
     let tooltip = out["tooltip"].as_str().unwrap();
-    // Name column truncates to 8 chars
+    // Waybar tooltip doesn't show ID column; name column truncates to 8 chars
     assert!(tooltip.contains("abcdefgh"), "tooltip was: {tooltip}");
-    // Full ID is shown in ID column
     assert!(
-        tooltip.contains("abcdefghijklmn"),
-        "full ID should appear in ID column: {tooltip}"
+        !tooltip.contains("abcdefghijklmn"),
+        "full ID should not appear in waybar tooltip (no ID column): {tooltip}"
     );
 }
 
