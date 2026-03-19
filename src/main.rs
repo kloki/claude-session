@@ -162,6 +162,17 @@ fn waybar() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn format_age(dt: chrono::DateTime<chrono::Utc>) -> String {
+    let dur = chrono::Utc::now() - dt;
+    if dur.num_hours() >= 1 {
+        format!("{}h{}m ago", dur.num_hours(), dur.num_minutes() % 60)
+    } else if dur.num_minutes() >= 1 {
+        format!("{}m ago", dur.num_minutes())
+    } else {
+        "just now".to_string()
+    }
+}
+
 fn ps() -> anyhow::Result<()> {
     let store = SessionStore::load_and_cleanup()?;
 
@@ -171,7 +182,15 @@ fn ps() -> anyhow::Result<()> {
     }
 
     for (id, s) in store.sorted_sessions() {
-        println!("{} {}", s.state.label(), s.display_name(id));
+        let short_id = &id[..id.len().min(8)];
+        println!(
+            "{} {}  [{}]  started: {}  updated: {}",
+            s.state.label(),
+            s.display_name(id),
+            short_id,
+            format_age(s.started_at),
+            format_age(s.updated_at),
+        );
     }
 
     Ok(())
