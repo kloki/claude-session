@@ -1,5 +1,5 @@
 use crate::{
-    format_ps,
+    output::format_ps,
     session::{SessionState, SessionStore},
 };
 
