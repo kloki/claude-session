@@ -1,6 +1,6 @@
 [package]
 name = "claude-sessions"
-version = "0.1.5"
+version = "0.2.0"
 edition = "2024"
 description = "CLI tool that tracks Claude Code sessions and exposes a Waybar widget"
 license = "MIT"
@@ -20,8 +20,6 @@ crossterm = "0.28"
 [dev-dependencies]
 assert_cmd = "2"
 tempfile = "3"
-serde_json = "1"
-
 # The profile that 'dist' will build with
 [profile.dist]
 inherits = "release"
