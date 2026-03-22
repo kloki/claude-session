@@ -99,12 +99,11 @@ pub fn watch() -> anyhow::Result<()> {
     let mut last_render = Instant::now();
 
     loop {
-        if crossterm::event::poll(Duration::from_secs(1))? {
-            if let Event::Key(key) = crossterm::event::read()? {
-                if should_quit(&key) {
-                    break;
-                }
-            }
+        if crossterm::event::poll(Duration::from_secs(1))?
+            && let Event::Key(key) = crossterm::event::read()?
+            && should_quit(&key)
+        {
+            break;
         }
 
         let timestamp_stale = last_render.elapsed() >= Duration::from_secs(30);

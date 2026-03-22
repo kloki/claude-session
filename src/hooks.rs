@@ -4,6 +4,13 @@ use serde::Deserialize;
 
 use crate::session::{SessionState, SessionStore, read_custom_title};
 
+fn dir_name(path: &str) -> Option<String> {
+    std::path::Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(str::to_string)
+}
+
 #[derive(Deserialize)]
 struct HookInput {
     session_id: String,
@@ -32,14 +39,7 @@ pub fn process_notification() -> anyhow::Result<()> {
         .get(&notif.session_id)
         .and_then(|s| s.name.clone())
         .or_else(|| notif.transcript_path.as_deref().and_then(read_custom_title))
-        .or_else(|| {
-            notif.cwd.as_deref().and_then(|cwd| {
-                std::path::Path::new(cwd)
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .map(str::to_string)
-            })
-        })
+        .or_else(|| notif.cwd.as_deref().and_then(dir_name))
         .unwrap_or_else(|| notif.session_id[..notif.session_id.len().min(8)].to_string());
 
     let title = format!("Claude: {session_name}");
@@ -87,10 +87,7 @@ pub fn process_hook() -> anyhow::Result<()> {
         } else if session.name.is_none()
             && let Some(ref cwd) = hook.cwd
         {
-            session.name = std::path::Path::new(cwd)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map(str::to_string);
+            session.name = dir_name(cwd);
         }
     }
 
