@@ -35,7 +35,7 @@ pub fn waybar() -> anyhow::Result<()> {
 
     let output = WaybarOutput {
         text: store.sessions.len().to_string(),
-        tooltip: format_ps(&store, false),
+        tooltip: format_ps(&store, false, Some(12)),
         class: waybar_class(&store).to_string(),
     };
 

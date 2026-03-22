@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs,
+    path::PathBuf,
+};
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -38,6 +42,10 @@ pub struct Session {
     pub name: Option<String>,
     pub started_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub project: Option<String>,
+    #[serde(default)]
+    pub permission_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -51,6 +59,8 @@ fn state_file_path() -> PathBuf {
 }
 
 const ID_DISPLAY_LEN: usize = 8;
+
+pub type GroupedSessions<'a> = Vec<(Option<&'a str>, Vec<(&'a str, &'a Session)>)>;
 
 impl Session {
     pub fn display_name<'a>(&'a self, id: &'a str) -> &'a str {
@@ -118,7 +128,35 @@ impl SessionStore {
                 name: None,
                 started_at: now,
                 updated_at: now,
+                project: None,
+                permission_mode: None,
             })
+    }
+
+    /// Returns sessions grouped by project, sorted alphabetically. Unknown project last.
+    pub fn grouped_sessions(&self) -> GroupedSessions<'_> {
+        let mut groups: BTreeMap<Option<&str>, Vec<(&str, &Session)>> = BTreeMap::new();
+
+        for (id, session) in &self.sessions {
+            let project = session.project.as_deref();
+            groups
+                .entry(project)
+                .or_default()
+                .push((id.as_str(), session));
+        }
+
+        for sessions in groups.values_mut() {
+            sessions.sort_by_key(|(id, s)| s.display_name(id));
+        }
+
+        let mut result: Vec<_> = groups.into_iter().collect();
+        result.sort_by(|(a, _), (b, _)| match (a, b) {
+            (None, None) => std::cmp::Ordering::Equal,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (Some(a), Some(b)) => a.cmp(b),
+        });
+        result
     }
 
     /// Remove sessions older than 24 hours based on updated_at

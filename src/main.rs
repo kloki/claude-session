@@ -42,6 +42,7 @@ struct HookInput {
     hook_event_name: String,
     cwd: Option<String>,
     transcript_path: Option<String>,
+    permission_mode: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -105,6 +106,14 @@ fn process_hook() -> anyhow::Result<()> {
             "Notification" | "PermissionRequest" => SessionState::WaitingForInput,
             _ => SessionState::Active,
         };
+        if session.project.is_none()
+            && let Some(ref cwd) = hook.cwd
+        {
+            session.project = Some(cwd.clone());
+        }
+        if let Some(ref mode) = hook.permission_mode {
+            session.permission_mode = Some(mode.clone());
+        }
         if let Some(title) = hook.transcript_path.as_deref().and_then(read_custom_title) {
             session.name = Some(title);
         } else if session.name.is_none()
@@ -132,55 +141,101 @@ fn format_age(dt: chrono::DateTime<chrono::Utc>) -> String {
     }
 }
 
-pub fn format_ps(store: &SessionStore, show_id: bool) -> String {
+fn display_project(path: &str) -> String {
+    let home = std::env::var("HOME").unwrap_or_default();
+    if !home.is_empty() && path.starts_with(&home) {
+        format!("~{}", &path[home.len()..])
+    } else {
+        path.to_string()
+    }
+}
+
+pub fn format_ps(store: &SessionStore, show_id: bool, max_name_width: Option<usize>) -> String {
     if store.sessions.is_empty() {
         return "No active sessions".to_string();
     }
 
-    let sessions = store.sorted_sessions();
-    let name_width = sessions
+    let groups = store.grouped_sessions();
+
+    let all_sessions: Vec<_> = groups
+        .iter()
+        .flat_map(|(_, sessions)| sessions.iter())
+        .collect();
+    let mut name_width = all_sessions
         .iter()
         .map(|(id, s)| s.display_name(id).len())
         .max()
         .unwrap_or(4)
         .max(4);
-    let state_width = sessions
+    if let Some(max) = max_name_width {
+        name_width = name_width.min(max);
+    }
+    let state_width = all_sessions
         .iter()
         .map(|(_, s)| s.state.label().len())
         .max()
         .unwrap_or(5)
         .max(5);
+    let mode_width = all_sessions
+        .iter()
+        .map(|(_, s)| s.permission_mode.as_deref().unwrap_or("").len())
+        .max()
+        .unwrap_or(4)
+        .max(4);
 
-    let mut lines = Vec::with_capacity(sessions.len() + 1);
-    if show_id {
-        lines.push(format!(
-            "{:<state_width$}  {:<name_width$}  {:<36}  {:>10}  {:>10}",
-            "STATE", "NAME", "ID", "STARTED", "UPDATED",
-        ));
-    } else {
-        lines.push(format!(
-            "{:<state_width$}  {:<name_width$}  {:>10}  {:>10}",
-            "STATE", "NAME", "STARTED", "UPDATED",
-        ));
-    }
-    for (id, s) in &sessions {
+    let mut lines = Vec::new();
+
+    for (i, (project, sessions)) in groups.iter().enumerate() {
+        if i > 0 {
+            lines.push(String::new());
+        }
+
+        let header = match project {
+            Some(path) => display_project(path),
+            None => "Unknown".to_string(),
+        };
+        lines.push(header);
+
         if show_id {
             lines.push(format!(
-                "{:<state_width$}  {:<name_width$}  {:<36}  {:>10}  {:>10}",
-                s.state.label(),
-                s.display_name(id),
-                id,
-                format_age(s.started_at),
-                format_age(s.updated_at),
+                "  {:<state_width$}  {:<name_width$}  {:<mode_width$}  {:<36}  {:>10}  {:>10}",
+                "STATE", "NAME", "MODE", "ID", "STARTED", "UPDATED",
             ));
         } else {
             lines.push(format!(
-                "{:<state_width$}  {:<name_width$}  {:>10}  {:>10}",
-                s.state.label(),
-                s.display_name(id),
-                format_age(s.started_at),
-                format_age(s.updated_at),
+                "  {:<state_width$}  {:<name_width$}  {:<mode_width$}  {:>10}  {:>10}",
+                "STATE", "NAME", "MODE", "STARTED", "UPDATED",
             ));
+        }
+
+        for (id, s) in sessions {
+            let mode = s.permission_mode.as_deref().unwrap_or("");
+            let name = s.display_name(id);
+            let name = if name.len() > name_width {
+                &name[..name_width]
+            } else {
+                name
+            };
+            if show_id {
+                lines.push(format!(
+                    "  {:<state_width$}  {:<name_width$}  {:<mode_width$}  {:<36}  {:>10}  {:>10}",
+                    s.state.label(),
+                    name,
+                    mode,
+                    id,
+                    format_age(s.started_at),
+                    format_age(s.updated_at),
+                ));
+            } else {
+                lines.push(format!(
+                    "  {:<state_width$}  {:<name_width$}  {:<mode_width$}  {:>10}  {:>10}",
+                    s.state.label(),
+                    name,
+                    mode,
+                    format_age(s.started_at),
+                    format_age(s.updated_at),
+                ));
+            }
         }
     }
     lines.join("\n")
@@ -188,7 +243,7 @@ pub fn format_ps(store: &SessionStore, show_id: bool) -> String {
 
 fn ps() -> anyhow::Result<()> {
     let store = SessionStore::load_and_cleanup()?;
-    println!("{}", format_ps(&store, true));
+    println!("{}", format_ps(&store, true, None));
     Ok(())
 }
 
@@ -199,6 +254,8 @@ struct JsonSession {
     state: String,
     started_at: chrono::DateTime<chrono::Utc>,
     updated_at: chrono::DateTime<chrono::Utc>,
+    project: Option<String>,
+    permission_mode: Option<String>,
 }
 
 fn json() -> anyhow::Result<()> {
@@ -213,6 +270,8 @@ fn json() -> anyhow::Result<()> {
             state: s.state.to_string(),
             started_at: s.started_at,
             updated_at: s.updated_at,
+            project: s.project.clone(),
+            permission_mode: s.permission_mode.clone(),
         })
         .collect();
 
