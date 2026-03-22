@@ -3,7 +3,8 @@ mod waybar;
 
 use std::io::Read;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use serde::Deserialize;
 use session::{SessionState, SessionStore, read_custom_title};
 
@@ -28,6 +29,11 @@ enum Command {
     Ps,
     /// Output sessions as a JSON array
     Json,
+    /// Generate shell completions
+    Completions {
+        /// The shell to generate completions for
+        shell: Shell,
+    },
 }
 
 #[derive(Deserialize)]
@@ -223,6 +229,15 @@ fn main() {
         Command::Waybar => waybar::waybar(),
         Command::Ps => ps(),
         Command::Json => json(),
+        Command::Completions { shell } => {
+            clap_complete::generate(
+                shell,
+                &mut Cli::command(),
+                "claude-sessions",
+                &mut std::io::stdout(),
+            );
+            Ok(())
+        }
     };
     if let Err(e) = result {
         eprintln!("Error: {e}");
